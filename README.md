@@ -1,5 +1,5 @@
 # XLSX
-Excel file reader writer in pascal
+Excel file reader writer for pascal ( delphi )
 
 Hello
 
