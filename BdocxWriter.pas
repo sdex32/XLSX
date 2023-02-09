@@ -423,7 +423,7 @@ function getdocumentxml(doc:BTDocxWriter):ansistring;
 var txt:ansistring;
     p:PTParagraph;
     s,spc,ww:widestring;
-    wrd,par:string;
+    par:string;
     i,j:longword;
     goout,ops:boolean;
     c:widechar;

@@ -12,6 +12,7 @@ uses
   BUnicode in 'BUnicode.pas',
   BdocxWriter in 'BdocxWriter.pas',
   BrtfWriter in 'BrtfWriter.pas',
+  BdocxForms in 'BdocxForms.pas',
   BFileTools in 'BFileTools.pas';
 
 {$R *.res}

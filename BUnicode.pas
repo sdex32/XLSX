@@ -54,7 +54,7 @@ begin
    begin
       inc(i);
       c := byte(d[i]);
-      if True then
+//      if True then
 //      if (c and $80 = $80) then // have more
 ///      begin
 //         if ((c and $E0) = $C0) ((i+1)<=j) then  // 2 bytes 7FF  110x xxxx  10xx xxxx
@@ -75,7 +75,7 @@ begin
          b3 := byte(d[i+2]);
          if b3 = 0 then break; //error
          Result := result + WideChar( (longword(c  and $F)  shl 12)
-                                   or (longword(b2 and $2F) shl 6)
+                                   or (longword(b2 and $3F) shl 6)
                                    or  longword(b3 and $3F) );
          inc(i,2);
          Continue;

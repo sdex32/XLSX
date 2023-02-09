@@ -443,9 +443,9 @@ the data is infobitmap header + data
 
          parag := parag + '}';
          ParagTouch := true;
-         GdiplusShutdown(gdiplusToken);
          Result := true;
       end;
+      GdiplusShutdown(gdiplusToken);
    end;
 end;
 

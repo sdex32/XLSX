@@ -16,6 +16,10 @@ interface
 // so i write a tiny class work well for me , for now
 
 
+// Work good
+// problems slow on huge xmls !!!!! need optimisation !!!!!
+
+
 function  TinyXML_Parse(const in_XML:AnsiString; const in_Search:AnsiString; var aFlags:longint ) :AnsiString;
 
 function  XML_Document (const RootName, Value :AnsiString; standalone:boolean = false) :AnsiString;

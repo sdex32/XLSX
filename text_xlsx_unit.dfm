@@ -2,7 +2,7 @@ object Form1: TForm1
   Left = 0
   Top = 0
   Caption = '0000'
-  ClientHeight = 339
+  ClientHeight = 344
   ClientWidth = 635
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -13,6 +13,13 @@ object Form1: TForm1
   OldCreateOrder = False
   PixelsPerInch = 96
   TextHeight = 13
+  object Label1: TLabel
+    Left = 552
+    Top = 311
+    Width = 63
+    Height = 13
+    Caption = 'Label1'
+  end
   object StringGrid1: TStringGrid
     Left = 8
     Top = 39
@@ -25,7 +32,7 @@ object Form1: TForm1
     Top = 8
     Width = 145
     Height = 25
-    Caption = 'Open xlsx  with call back'
+    Caption = 'Open xlsx/xls  with call back'
     TabOrder = 1
     OnClick = Button1Click
   end
@@ -43,22 +50,22 @@ object Form1: TForm1
     Top = 8
     Width = 162
     Height = 25
-    Caption = 'Open xlsx'
+    Caption = 'Open xlsx/xls'
     TabOrder = 3
     OnClick = Button3Click
   end
   object Button4: TButton
-    Left = 78
+    Left = 32
     Top = 306
-    Width = 75
+    Width = 121
     Height = 25
     Caption = 'DOCX writer test'
     TabOrder = 4
     OnClick = Button4Click
   end
   object Button5: TButton
-    Left = 336
-    Top = 297
+    Left = 159
+    Top = 306
     Width = 105
     Height = 25
     Caption = 'RTF writer test'
@@ -66,7 +73,7 @@ object Form1: TForm1
     OnClick = Button5Click
   end
   object OpenDialog1: TOpenDialog
-    Filter = 'Excel file|*.xlsx'
+    Filter = 'Excel file|*.xlsx|Old Excel|*.xls'
     Left = 440
   end
   object SaveDialog1: TSaveDialog

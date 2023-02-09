@@ -7,6 +7,7 @@ interface
 //work well very fast after rewriting
 //now after parsing i write offset inseide the xml file much faster thar xml parsing !!!
 // code is ugly but work fine on 13mb xlsx tested
+//TODO !!!!!! need optimisation for speed !!!!!!!!!!!!!!!!
 
 type  BTXlsxReader = class
          private
@@ -48,6 +49,7 @@ constructor BTXlsxReader.Create;
 begin
    aSheet := nil;
    aCurrent := nil;
+   Reset;
 end;
 
 //------------------------------------------------------------------------------
@@ -77,6 +79,8 @@ begin
       aSheet := nil;
    end;
    aCurrent := nil;
+   aSheetCnt := 0;
+   aStringPool := '';
 end;
 
 //------------------------------------------------------------------------------
@@ -96,6 +100,8 @@ var z:TZipRead;
     callb :BTxlsxReaderCallBack;
     value :widestring;
     colid,rowid:longword;
+    pin:longword;
+    spt,dpt:pointer;
 begin
    Reset;
    Result := false;
@@ -118,9 +124,45 @@ begin
          begin
             pn := 0;
             p1 := 0;
+            pin := 1;
 
-            for j := 1 to i do
+            for j := 1 to i do    //work faster
             begin
+               pin := FastPosA('<si><t>',data,pin);
+               if Pin <> 0 then
+               begin
+                  f := pin + 7;
+                  pin := FastPosA('</t>',data,f);
+                  if pin <> 0 then
+                  begin
+                     s := Copy(Data,f,pin-f);
+                     dat := HTMLDecode(UTF82Unicode(s)); //utf8towidestring(s));
+                     sz := length(dat);
+                     p1 := p1 + 4{bytes header ofs len} + sz;
+                     SetLength(aStringPool,p1+4);
+                     dp := nativeUint(@aStringPool[1]);
+
+                     spt := @dat[1];
+                     dpt := @aStringPool[pn + 5];
+                     move(spt^,dpt^,sz*2); // widestring;
+
+//                     for cm := 1 to sz do
+//                     begin
+//                        aStringPool[pn + 4 +cm] := dat[cm];
+//                     end;
+
+                     pt := pointer(dp + pn*2);
+                     rw := pointer(dp + pn*2 + 4);
+                     pt^ := p1 * 2;
+                     rw^ := word(sz);
+
+                     pn := p1;
+                     pt := pointer(dp + pn*2);
+                     pt^ := 0;
+
+                  end;
+               end;
+   (*
                f := 0;
                s := TinyXML_Parse(data,'/sst/si['+ansistring(tostr(j))+']/t',f);
                if f = 0 then
@@ -144,6 +186,7 @@ begin
                   pt^ := 0;
 
                end;
+     *)
             end;
          end;
       end;
@@ -158,7 +201,7 @@ begin
          begin
             New(o);
             o.next := nil;
-            o.name := utf8towidestring(s);
+            o.name := utf82Unicode(s); //towidestring(s);
             f := 0;
             s := TinyXML_Parse(data,'/workbook/sheets/sheet['+ansistring(toStr(i))+'].sheetId',f);
             j := z.NameToIndex('xl/worksheets/sheet'+ansistring(s)+'.xml');
@@ -229,8 +272,8 @@ begin
                begin
                   repeat
                      k := j;
-                     j := Pos('<row ',o.data,k);
-                     nj := Pos('<row ',o.data,j+5);
+                     j := FastPosA('<row ',o.data,k);
+                     nj := FastPosA('<row ',o.data,j+5);
                      if nj = 0 then nj := length(o.data);
 
                      if j<>0 then
@@ -270,7 +313,7 @@ begin
                            p1 := p + 8;
                            repeat
                               // now start search for
-                              oc := Pos('<c ',o.data,p1);
+                              oc := FastPosA('<c ',o.data,p1);
                               if (oc > 0) and (oc < nj) then
                               begin
                                  dec(oc); // zero start ptr
@@ -328,7 +371,7 @@ begin
                                     colid := sz;
                                     Value := '';
 
-                                    p3 := Pos('<v>',o.Data,p1+8);
+                                    p3 := FastPosA('<v>',o.Data,p1+8);
                                     cm := 0;
                                     s := '';
                                     sz := 0;
@@ -473,6 +516,7 @@ var i,k,j,cm,rr,ln:longword;
     pt :^longword;
     pw:^word;
 begin
+   try
    val(string(s),i,cm);
    if cm = 0  then
    begin
@@ -493,6 +537,9 @@ begin
    end else begin
       Value := widestring(s);
    end;
+   except
+      Value := widestring(s);
+   end;
 end;
 
 //------------------------------------------------------------------------------
@@ -508,6 +555,7 @@ var s:ansistring;
     st:boolean;
 begin
    Result := false;
+   Value := '';
 //   sr := ansistring(tostr(row));
 //   cid := ExcelAdr(row,col);
    try
@@ -516,6 +564,9 @@ begin
          o := aCurrent;
          pp := longword(@o.data[1]);
          ln := length(o.data);
+         if col = 0 then Exit;
+         if row = 0 then Exit;
+
          if (col <= o.max_col) and (row <= o.max_row) then
          begin
             rr := 0;
@@ -569,7 +620,7 @@ begin
                            end;
 }
                         end else begin
-                           Value := HTMLDecode(utf8toWidestring(s)); // clear value
+                           Value := HTMLDecode(utf82unicode(s)); //toWidestring(s)); // clear value
                         end;
                         Result := true;
                         Exit;

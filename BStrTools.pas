@@ -71,7 +71,7 @@ function WideCP1251(const txt :widestring):ansistring;
 function CP1251Wide(const txt :ansistring):widestring;
 function FastCPosW(a:widechar; const s:widestring):longword;  // if you use string and char slow must be same type
 function FastCPosA(a:ansichar; const s:ansistring):longword;
-
+function FastPosA(const a,s:ansistring; startpos:longword=1):longword;
 
 implementation
 
@@ -938,12 +938,13 @@ begin
    Result := p;
 end;
 
+                  //al               //edx   fast call
 function FastCPosW(a:widechar; const s:widestring):longword;
-//{$IFDEF CPUX64}
+{$IFDEF CPUX64}
 var j:longword;
-//{$ENDIF}
+{$ENDIF}
 begin
-//{$IFDEF CPUX64}
+{$IFDEF CPUX64}
    Result := 0;
 //870
    j := length(s);
@@ -964,16 +965,19 @@ begin
       end;
    end;
 }
-(*
+
 {$ELSE}
    asm
       push  edi
-      mov   eax, s
-      test  eax, eax
-      jz    @@out
-      mov   ecx, dword ptr [eax - 4]
-      mov   edi, eax
       mov   eax, 0
+      mov   edi, s
+//      test  eax, eax
+      or    edi, edi
+      jz    @@out
+      mov   ecx, dword ptr [edi - 4]
+//      test  ecx, ecx
+      or    ecx, ecx
+      jz    @@out
       mov   dx, a
 @@lop:
       cmp   dx, word ptr [edi + eax]
@@ -990,7 +994,6 @@ begin
       mov   Result, eax
    end;
 {$ENDIF}
-*)
 end;
 
 function FastCPosA(a:ansichar; const s:ansistring):longword;
@@ -1010,12 +1013,15 @@ begin
 {$ELSE}
    asm
       push  edi
-      mov   eax, s
-      test  eax, eax
-      jz    @@out
-      mov   ecx, dword ptr [eax - 4]
-      mov   edi, eax
       mov   eax, 0
+      mov   edi, s
+//      test  eax, eax
+      or    edi, edi
+      jz    @@out
+      mov   ecx, dword ptr [edi - 4]
+//      test  ecx, ecx
+      or    ecx, ecx
+      jz    @@out
       mov   dl, a
 @@lop:
       cmp   dl, byte ptr [edi + eax]
@@ -1083,6 +1089,165 @@ begin
    end;
 
 end;
+
+
+function FastAnsiStrLen(var s):longword;
+begin
+   asm
+      push edi
+      cld
+      mov ecx, -1
+      mov edi, s
+      or  edi, edi
+      mov   eax, 0
+      jz @@11
+      repnz scasb
+      mov eax, -2
+      sub eax, ecx
+@@11:
+      pop edi
+      mov Result, eax
+   end;
+end;
+
+function FastAnsiStrPos(c:ansichar; var s; len:longword; stpos:longword=1):longword;
+begin
+   asm
+      push  edi
+      mov   edi, s
+      or    edi, edi
+      jz    @@out
+      mov   eax, stpos
+      mov   ecx, dword ptr [edi - 4]
+      dec   eax
+      or    ecx, ecx
+      jz    @@out
+      mov   dl, c
+@@lop:
+      cmp   dl, byte ptr [edi + eax]
+      je    @@res
+      lea   eax, [eax + 1]
+      loop  @@lop
+      mov   eax, 0
+      jmp   @@out
+@@res:
+      inc   eax
+@@out:
+      pop   edi
+      mov   Result, eax
+   end;
+end;
+
+function FastPosA(const a,s:ansistring; startpos:longword=1):longword;
+begin
+   asm
+      push  edi
+      push  esi
+      push  ebx
+      mov   eax, startpos
+      dec   eax
+//      mov   eax, 0
+      mov   edi, a
+      mov   esi, s
+      mov   ecx, dword ptr [esi - 4]
+      or    ecx, ecx
+      jz    @@out
+      mov   edx, dword ptr [edi - 4]
+      test  edx, $FFFFFFFC //1100 4..max
+      jz    @@less4
+      sub   ecx, edx
+      inc   ecx
+      sub   edx, 4
+      mov   ebx, dword ptr [edi]
+@@lop4:
+      cmp   ebx, dword ptr [esi + eax]
+      je    @@res4
+      lea   eax, [eax + 1]
+      loop  @@lop4
+      mov   eax, 0
+      jmp   @@out
+@@res4:
+      or    edx, edx
+      jz    @@hres4 // no more
+      push  ecx
+      push  ebx
+      push  edi
+      push  eax
+      mov   ecx, edx // rest
+      add   edi, 4
+      add   eax, 4
+@@bychar:
+      mov   bl, byte ptr [edi]
+      cmp   bl, byte ptr [esi + eax]
+      jne   @@ops
+      lea   eax, [eax + 1]
+      inc   edi
+      loop  @@bychar
+      // super ve ahve winner
+      add   esp, 16
+      sub   eax, 4
+      jmp   @@hres4
+
+@@ops:
+      pop   eax
+      pop   edi
+      pop   ebx
+      pop   ecx
+      lea   eax, [eax + 1]
+      jmp   @@lop4
+
+@@hres4: // have result
+      sub   eax, edx
+      jmp   @@res
+
+
+@@less4: //--------------------------------------------
+      test  edx, $FFFFFFFE //1110 2-3
+      jz    @@less2
+      sub   ecx, edx
+      inc   ecx
+      shl   edx, 16 //put size
+      mov   dx, word ptr [edi]
+@@lop2:
+      cmp   dx, word ptr [esi + eax]
+      je    @@res2
+      lea   eax, [eax + 1]
+      loop  @@lop2
+      mov   eax, 0
+      jmp   @@out
+@@res2:
+      test  edx, $00010000
+      jz    @@res  // only two chars eax on right char -1
+      mov   bl, byte ptr [edi + 2] // test third (3) char
+      lea   eax, [eax + 1]
+      cmp   bl, byte ptr [esi + eax + 1]
+      je    @@out // good result
+      jmp   @@lop2 //continue
+
+@@less2: //-------------------------------------------
+      test  edx, $1  // 1 char
+      jz    @@out
+      mov   dl, byte ptr [edi]
+@@lop:
+      cmp   dl, byte ptr [esi + eax]
+      je    @@res
+      lea   eax, [eax + 1]
+      loop  @@lop
+      mov   eax, 0
+      jmp   @@out
+@@res:
+      inc   eax
+
+@@out:
+      pop   ebx
+      pop   esi
+      pop   edi
+      mov   Result, eax
+   end;
+end;
+
+
+
 
 
 end.
